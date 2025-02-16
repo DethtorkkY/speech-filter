@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Распознавание речи с нецензурными словами</title>
+<style>
+    #text-output {
+      margin-top: 20px;
+      font-size: 18px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      transition: color 0.5s;
+    }
+    button {
+      margin-top: 20px;
+    }
+</style>
+</head>
+<body>
+<h1>Распознавание речи с нецензурными словами</h1>
+<button onclick="startRecognition()">Начать распознавание</button>
+<button onclick="stopRecognition()">Остановить распознавание</button>
+<button id="download-audio" style="display: none;" disabled>Скачать аудио</button>
+<p id="text-output">Здесь будет распознанный текст речи...</p>
+
+<script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Ваш браузер не поддерживает распознавание речи.");
+    }
+ 
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ru-RU';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+ 
+    const badWords = ["мандарин", "помидор", "мат"]; 
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+ 
+    recognition.onstart = function() {
+      console.log("Распознавание речи начато...");
+    };
+ 
+    recognition.onerror = function(event) {
+      console.error("Ошибка распознавания речи: ", event.error);
+    };
+ 
+    recognition.onresult = function(event) {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      document.getElementById('text-output').innerText = transcript;
+ 
+      badWords.forEach(word => {
+        if (transcript.includes(word)) {
+          document.getElementById('text-output').style.color = 'red';
+          setTimeout(() => {
+            document.getElementById('text-output').style.color = 'black';
+          }, 1000);
+          stopRecognition();
+        }
+      });
+    };
+ 
+    function startRecognition() {
+      if (!isRecording) {
+        recognition.start();
+        startRecording();
+        document.getElementById('download-audio').style.display = 'none';
+        document.getElementById('download-audio').disabled = true;
+        isRecording = true;
+      }
+    }
+ 
+    function stopRecognition() {
+      if (isRecording) {
+        recognition.stop();
+        stopRecording();
+        isRecording = false;
+      }
+    }
+ 
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start();
+          audioChunks = [];
+ 
+          mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+          };
+ 
+          mediaRecorder.onstop = () => {
+            if (audioChunks.length > 0) {
+              const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+              const audioUrl = URL.createObjectURL(audioBlob);
+              const downloadButton = document.getElementById('download-audio');
+              downloadButton.style.display = 'block';
+              downloadButton.disabled = false;
+              downloadButton.onclick = () => {
+                const a = document.createElement('a');
+                a.href = audioUrl;
+                a.download = 'recorded_audio.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              };
+            }
+          };
+        })
+        .catch(error => {
+          console.error("Ошибка записи аудио: ", error);
+        });
+    }
+ 
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    }
+</script>
+</body>
+</html>
