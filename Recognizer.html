@@ -1,128 +1,273 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Распознавание речи с нецензурными словами</title>
 <style>
-    #text-output {
-      margin-top: 20px;
-      font-size: 18px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      transition: color 0.5s;
-    }
-    button {
-      margin-top: 20px;
-    }
+  :root {
+    --bg-light: #f9f9f9;
+    --text-light: #222;
+    --btn-bg-light: #4a90e2;
+    --btn-hover-light: #357ABD;
+
+    --bg-dark: #121212;
+    --text-dark: #eee;
+    --btn-bg-dark: #1e88e5;
+    --btn-hover-dark: #1565c0;
+  }
+
+  body {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  #text-output {
+    margin-top: 20px;
+    font-size: 18px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    transition: color 0.5s;
+    max-width: 600px;
+    text-align: center;
+    min-height: 100px;
+    border: 2px solid #ccc;
+    padding: 15px 20px;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgb(0 0 0 / 0.05);
+  }
+
+  button {
+    margin-top: 20px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 12px 25px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 30px;
+    background-color: var(--btn-bg-light);
+    color: white;
+    box-shadow: 0 4px 6px rgb(74 144 226 / 0.4);
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+
+  button:hover:not(:disabled) {
+    background-color: var(--btn-hover-light);
+    box-shadow: 0 6px 10px rgb(53 122 189 / 0.6);
+  }
+
+  button:disabled {
+    background-color: #aaa;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  #buttons-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 700px;
+    width: 100%;
+  }
+
+  /* Темная тема */
+  body.dark {
+    background-color: var(--bg-dark);
+    color: var(--text-dark);
+  }
+  body.dark #text-output {
+    background-color: #222;
+    border-color: #444;
+    box-shadow: 0 0 10px rgb(255 255 255 / 0.1);
+  }
+  body.dark button {
+    background-color: var(--btn-bg-dark);
+    box-shadow: 0 4px 6px rgb(30 136 229 / 0.7);
+    color: white;
+  }
+  body.dark button:hover:not(:disabled) {
+    background-color: var(--btn-hover-dark);
+    box-shadow: 0 6px 10px rgb(21 101 192 / 0.8);
+  }
+  body.dark button:disabled {
+    background-color: #555;
+  }
+
+  /* Кнопка переключения темы */
+  #theme-toggle {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    background-color: transparent;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    color: inherit;
+    font-size: 20px;
+    line-height: 36px;
+    text-align: center;
+    user-select: none;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  #theme-toggle:hover {
+    background-color: currentColor;
+    color: var(--bg-light);
+  }
+  body.dark #theme-toggle:hover {
+    color: var(--bg-dark);
+    background-color: var(--text-dark);
+  }
 </style>
 </head>
 <body>
-<h1>Распознавание речи с нецензурными словами</h1>
-<button onclick="startRecognition()">Начать распознавание</button>
-<button onclick="stopRecognition()">Остановить распознавание</button>
-<button id="download-audio" style="display: none;" disabled>Скачать аудио</button>
-<p id="text-output">Здесь будет распознанный текст речи...</p>
+  <button id="theme-toggle" title="Переключить тему">🌙</button>
+  <h1>Распознавание речи с нецензурными словами</h1>
+
+  <div id="buttons-container">
+    <button onclick="startRecognition()">Начать распознавание</button>
+    <button onclick="stopRecognition()">Остановить распознавание</button>
+    <button id="download-audio" style="display: none;" disabled>Скачать аудио</button>
+  </div>
+
+  <p id="text-output">Здесь будет распознанный текст речи...</p>
 
 <script>
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Ваш браузер не поддерживает распознавание речи.");
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Ваш браузер не поддерживает распознавание речи.");
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'ru-RU';
+  recognition.interimResults = true;
+  recognition.continuous = true;
+
+  const badWords = ["тупой", "дурак", "мат", "сучок", "жирный", "петух", "лох", "тварь", "бомба", "терракт"];
+  let mediaRecorder;
+  let audioChunks = [];
+  let isRecording = false;
+
+  recognition.onstart = function() {
+    console.log("Распознавание речи начато...");
+  };
+
+  recognition.onerror = function(event) {
+    console.error("Ошибка распознавания речи: ", event.error);
+  };
+
+  recognition.onresult = function(event) {
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
     }
- 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.interimResults = true;
-    recognition.continuous = true;
- 
-    const badWords = ["тупой", "дурак", "мат", "сучок", "жирный", "петух", "лох", "тварь", "бомба", "терракт"]; 
-    let mediaRecorder;
-    let audioChunks = [];
-    let isRecording = false;
- 
-    recognition.onstart = function() {
-      console.log("Распознавание речи начато...");
-    };
- 
-    recognition.onerror = function(event) {
-      console.error("Ошибка распознавания речи: ", event.error);
-    };
- 
-    recognition.onresult = function(event) {
-      let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+    document.getElementById('text-output').innerText = transcript;
+
+    badWords.forEach(word => {
+      if (transcript.includes(word)) {
+        document.getElementById('text-output').style.color = 'red';
+        setTimeout(() => {
+          document.getElementById('text-output').style.color = '';
+        }, 1000);
+        stopRecognition();
       }
-      document.getElementById('text-output').innerText = transcript;
- 
-      badWords.forEach(word => {
-        if (transcript.includes(word)) {
-          document.getElementById('text-output').style.color = 'red';
-          setTimeout(() => {
-            document.getElementById('text-output').style.color = 'black';
-          }, 1000);
-          stopRecognition();
-        }
+    });
+  };
+
+  function startRecognition() {
+    if (!isRecording) {
+      recognition.start();
+      startRecording();
+      document.getElementById('download-audio').style.display = 'none';
+      document.getElementById('download-audio').disabled = true;
+      isRecording = true;
+    }
+  }
+
+  function stopRecognition() {
+    if (isRecording) {
+      recognition.stop();
+      stopRecording();
+      isRecording = false;
+    }
+  }
+
+  function startRecording() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = event => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          if (audioChunks.length > 0) {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const downloadButton = document.getElementById('download-audio');
+            downloadButton.style.display = 'block';
+            downloadButton.disabled = false;
+            downloadButton.onclick = () => {
+              const a = document.createElement('a');
+              a.href = audioUrl;
+              a.download = 'recorded_audio.wav';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            };
+          }
+        };
+      })
+      .catch(error => {
+        console.error("Ошибка записи аудио: ", error);
       });
-    };
- 
-    function startRecognition() {
-      if (!isRecording) {
-        recognition.start();
-        startRecording();
-        document.getElementById('download-audio').style.display = 'none';
-        document.getElementById('download-audio').disabled = true;
-        isRecording = true;
-      }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
     }
- 
-    function stopRecognition() {
-      if (isRecording) {
-        recognition.stop();
-        stopRecording();
-        isRecording = false;
-      }
+  }
+
+  // Тема
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  themeToggleBtn.addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+    if (document.body.classList.contains('dark')) {
+      themeToggleBtn.textContent = '☀️';
+      localStorage.setItem('theme', 'dark');
+    } else {
+      themeToggleBtn.textContent = '🌙';
+      localStorage.setItem('theme', 'light');
     }
- 
-    function startRecording() {
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          mediaRecorder = new MediaRecorder(stream);
-          mediaRecorder.start();
-          audioChunks = [];
- 
-          mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-          };
- 
-          mediaRecorder.onstop = () => {
-            if (audioChunks.length > 0) {
-              const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-              const audioUrl = URL.createObjectURL(audioBlob);
-              const downloadButton = document.getElementById('download-audio');
-              downloadButton.style.display = 'block';
-              downloadButton.disabled = false;
-              downloadButton.onclick = () => {
-                const a = document.createElement('a');
-                a.href = audioUrl;
-                a.download = 'recorded_audio.wav';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              };
-            }
-          };
-        })
-        .catch(error => {
-          console.error("Ошибка записи аудио: ", error);
-        });
-    }
- 
-    function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-      }
-    }
+  });
+
+  // Автоподгрузка темы из localStorage
+  if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark');
+    themeToggleBtn.textContent = '☀️';
+  }
 </script>
 </body>
 </html>
